@@ -4,6 +4,10 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 export type OpenRouterFailureReason =
   | "unconfigured"
   | "rate_limited"
+  | "authentication"
+  | "credits"
+  | "routing"
+  | "timeout"
   | "unavailable"
   | "invalid_response";
 
@@ -38,6 +42,12 @@ export function createOpenRouterClient(options: OpenRouterClientOptions = {}): O
       const model = options.model ?? process.env.OPENROUTER_MODEL;
       if (!apiKey || !model) return { ok: false, reason: "unconfigured" };
 
+      // Luna's currently available route accepts JSON objects but rejects the
+      // strict-schema/require_parameters combination. Keep server validation
+      // authoritative; JSON mode alone does not establish schema compliance.
+      const jsonObjectMode = ["openai/gpt-6-luna", "openai/gpt-6-luna-pro", "~openai/gpt-luna-latest"].includes(model);
+      const systemPrompt = `${request.systemPrompt}\nReturn a JSON data object that conforms to this schema, not the schema itself. No markdown, commentary, or extra properties.\nJSON schema (${request.schemaName}):\n${JSON.stringify(request.schema)}`;
+
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
       try {
@@ -50,14 +60,14 @@ export function createOpenRouterClient(options: OpenRouterClientOptions = {}): O
           body: JSON.stringify({
             model,
             messages: [
-              { role: "system", content: request.systemPrompt },
+              { role: "system", content: systemPrompt },
               { role: "user", content: request.userPrompt },
             ],
             temperature: 0,
-            max_tokens: 2_000,
+            max_tokens: 4_000,
             session_id: request.sessionId,
-            provider: { require_parameters: true },
-            response_format: {
+            ...(jsonObjectMode ? {} : { provider: { require_parameters: true } }),
+            response_format: jsonObjectMode ? { type: "json_object" } : {
               type: "json_schema",
               json_schema: {
                 name: request.schemaName,
@@ -70,6 +80,9 @@ export function createOpenRouterClient(options: OpenRouterClientOptions = {}): O
         });
 
         if (response.status === 429) return { ok: false, reason: "rate_limited" };
+        if (response.status === 401 || response.status === 403) return { ok: false, reason: "authentication" };
+        if (response.status === 402) return { ok: false, reason: "credits" };
+        if (response.status === 404) return { ok: false, reason: "routing" };
         if (!response.ok) return { ok: false, reason: "unavailable" };
 
         const payload: unknown = await response.json();
@@ -81,7 +94,7 @@ export function createOpenRouterClient(options: OpenRouterClientOptions = {}): O
           return { ok: false, reason: "invalid_response" };
         }
       } catch {
-        return { ok: false, reason: "unavailable" };
+        return { ok: false, reason: controller.signal.aborted ? "timeout" : "unavailable" };
       } finally {
         clearTimeout(timeout);
       }
@@ -92,7 +105,7 @@ export function createOpenRouterClient(options: OpenRouterClientOptions = {}): O
 function readContent(payload: unknown): string | null {
   if (!isRecord(payload) || !Array.isArray(payload.choices) || payload.choices.length === 0) return null;
   const choice = payload.choices[0];
-  if (!isRecord(choice) || !isRecord(choice.message) || typeof choice.message.content !== "string") return null;
+  if (!isRecord(choice) || choice.finish_reason === "length" || !isRecord(choice.message) || typeof choice.message.content !== "string") return null;
   return choice.message.content;
 }
 
