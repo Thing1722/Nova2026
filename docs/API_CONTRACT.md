@@ -6,7 +6,7 @@ Phase 1 is now adaptive restaurant onboarding; see `PROJECT.md`. The `/api/analy
 
 Onboarding requires partial profiles, unknown values, field-level evidence, contradictions, owner edits, adaptive questions, and explicit confirmation. Those concepts are not represented by this analysis request. Do not submit incomplete profiles here, add extra properties, fabricate required values, or treat unverified inferences as operational facts.
 
-Agree on a separate onboarding contract through GitHub before endpoint implementation. Its route and wire format are pending. It must cover:
+The separate onboarding contract is finalized as `POST /api/onboard`; see `ONBOARDING_CONTRACT_DRAFT.md` and the exported onboarding interfaces in `types/api.ts`. `/api/onboard` supersedes the earlier proposed `/api/onboarding` route. Its full state/action request and response envelopes cover:
 
 - Incremental messages and profile edits, preserving facts and stable entity IDs.
 - Confirmed facts, missing/ambiguous details, unverified inferences, evidence, and unresolved conflicts.
@@ -14,7 +14,7 @@ Agree on a separate onboarding contract through GitHub before endpoint implement
 - Updated editable profile, task-specific readiness, summary, and owner confirmation as separate states.
 - Conversation state ownership and safe error/retry behavior without losing collected information.
 
-Existing analysis models and fixtures remain compatible with v1. A future handoff must explicitly map sufficiently confirmed onboarding facts to this request; conversion and task readiness rules remain deferred. No onboarding wire schema is finalized in this revision.
+Existing analysis models and fixtures remain compatible with v1. A future handoff must explicitly map sufficiently confirmed onboarding facts to this request; conversion rules remain deferred. The backend is stateless: each onboarding request carries the complete accepted state plus one action, and success returns the complete replacement state. Phase 1 readiness is `task_unspecified` when the owner's goal is unclear or `rules_pending` when the goal is known but operational readiness rules are undefined. Profile review and confirmation remain independent of readiness.
 
 ## Transport and rules
 

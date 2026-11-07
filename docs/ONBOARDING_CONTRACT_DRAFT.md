@@ -1,6 +1,6 @@
-# Adaptive onboarding contract - draft v0.1
+# Adaptive onboarding contract - v1
 
-Status: proposal for frontend/backend review, not an implemented API. This document supplements the Phase 1 specifications on origin/main. It does not modify `/api/analyze` or its v1 models. No operational recommendation endpoints are proposed here.
+Status: finalized for frontend/backend implementation. This document supplements the Phase 1 specifications. It does not modify `/api/analyze` or its v1 models. No operational recommendation endpoints are proposed here.
 
 ## Agreed product behavior
 
@@ -13,7 +13,7 @@ Status: proposal for frontend/backend review, not an implemented API. This docum
 
 ## State ownership and transport
 
-Proposed endpoint: `POST /api/onboarding`, JSON, non-streaming for the MVP. Backend validates the complete input and output. Secrets remain server-side. Agent verification uses offline mocks, never live OpenRouter calls.
+Endpoint: `POST /api/onboard`, JSON, non-streaming for the MVP. This route supersedes the earlier `/api/onboarding` proposal. Backend validates the complete input and output. Secrets remain server-side. Agent verification uses offline mocks, never live OpenRouter calls.
 
 The browser stores the latest accepted state in versioned localStorage. The backend is stateless: each request carries that state and one action. It returns the entire replacement state atomically. A failed request does not partially update the accepted state.
 
@@ -46,7 +46,7 @@ type State = {
   review: { summary: string; unknowns: string[] } | null;
   confirmation: { profileRevision: number; sourceId: string } | null;
   readiness: {
-    status: "task_unspecified" | "rules_pending" | "needs_information" | "ready";
+    status: "task_unspecified" | "rules_pending";
     task: string | null;
     blockingFactIds: string[];
     reason: string;
@@ -80,6 +80,7 @@ type Profile = {
     role: Fact<string>;
     available: Fact<boolean>;
     skillIds: Fact<string[]>;
+    assignedStationId: Fact<string>;
   }[];
   skills: { id: string; name: Fact<string> }[];
   equipment: {
@@ -87,6 +88,7 @@ type Profile = {
     name: Fact<string>;
     quantity: Fact<number>;
     available: Fact<boolean>;
+    capacity: Fact<number>;
     capacityNotes: Fact<string>;
   }[];
   menu: {
@@ -158,13 +160,13 @@ Actions use strict discriminated shapes; reject unknown properties, nonexistent 
 - A quick reply becomes an answer only on selection. Validate it against the active question; free text uses null quickReplyId. Unknown/skipped answers update topics and do not fabricate facts. Revisit skipped/unknown topics only when necessary, with an explanation.
 - `request_review` returns a summary with confirmed information and separate unknowns/unverified details/conflicts. It does not require global completeness or defined future task rules.
 - `confirm_profile` requires a displayed current review and matching profileRevision. It acknowledges the reviewed profile, not hidden inferences. Reject unresolved conflicts until clarified. Unknown and unverified fields remain unchanged.
-- Later operational task rules are deferred. Phase 1 returns `task_unspecified` or `rules_pending`, never an invented percentage or premature `ready`. The other statuses are reserved for an agreed future ruleset.
+- Later operational task rules are deferred. Phase 1 returns `task_unspecified` when the goal is unclear or `rules_pending` when the goal is known, never an invented percentage or premature `ready`. Profile review and confirmation work independently of readiness.
 
 Backend returns one assistant message and at most one primary question when conversational feedback is needed; manual edits need not clutter the conversation. Questions respect known answers and owner goals. The UI always permits direct navigation and continued conversation after review/confirmation.
 
 ## Optional menu-upload entry point
 
-Proposed `POST /api/onboarding/menu-import`, multipart form fields `request` (JSON containing schemaVersion, requestId, state) and `file`. Success uses the same Response envelope. This is extraction only; it adds unverified menu facts and evidence, preserving existing accepted facts and stable IDs. Potential duplicate/ambiguous dish matches require review rather than silent replacement. Newly extracted menu names populate the editable menu; skill/equipment requirements remain unknown.
+Future menu import, if approved, will use `POST /api/onboard/menu-import`; it is not part of the current implementation. Its proposed multipart fields remain `request` (JSON containing schemaVersion, requestId, state) and `file`. Success would use the same Response envelope. This is extraction only; it adds unverified menu facts and evidence, preserving existing accepted facts and stable IDs. Potential duplicate/ambiguous dish matches require review rather than silent replacement. Newly extracted menu names populate the editable menu; skill/equipment requirements remain unknown.
 
 Proposed initial support: one JPEG or PNG file, at most 3 MiB. These formats/limits need backend agreement before the UI advertises them. PDF and multi-file support are deferred until feasible provider and deployment limits are confirmed. Validate bytes/signature, not only extension or browser MIME. Reject unsupported/oversized input before provider calls. Treat all document text as untrusted data, never instructions.
 
