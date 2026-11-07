@@ -15,6 +15,9 @@ Statuses: **Not Started / In Progress / Completed / Blocked**. Owners update the
 
 ## Current blockers
 
+- OpenRouter environment templates are prepared with blank key/model values; supply the key locally in `.env.local`.
+- Owner clarifications in PROJECT.md require an API contract revision for timing evidence and three separate interfaces against a common baseline. New dish recommendations are now in scope.
+
 - Implementation awaits explicit authorization. No application code or dependencies have been added.
 - Before coding, both developers must sync this documentation and agree who owns shared configuration setup.
 
