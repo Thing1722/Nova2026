@@ -2,30 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { createEntryDraft, entryStorageKey as storageKey, isEntryDraft } from "./entry-draft";
+import type { EntryDraft } from "./entry-draft";
+import { useOnboarding } from "./use-onboarding";
+import { Conversation } from "./conversation";
+import { ProfileEditor, RestaurantEditor } from "./profile-editor";
 
-const storageKey = "shiftchef:entry:v1";
 const sections = ["Overview", "Conversation", "Menu", "Staff", "Skills", "Equipment"] as const;
 type Section = (typeof sections)[number];
 type Path = "chat" | "upload" | "manual";
-// Local entry-screen draft only. This is not the proposed onboarding API model.
-type Draft = {
-  version: 1;
-  started: boolean;
-  name: string;
-  cuisine: string;
-  introduction: string;
-  messages: string[];
-  menuFileName: string;
-};
-const empty: Draft = { version: 1, started: false, name: "", cuisine: "", introduction: "", messages: [], menuFileName: "" };
-
-function isDraft(value: unknown): value is Draft {
-  if (!value || typeof value !== "object") return false;
-  const d = value as Draft;
-  return d.version === 1 && typeof d.started === "boolean" &&
-    [d.name, d.cuisine, d.introduction, d.menuFileName].every((v) => typeof v === "string") &&
-    Array.isArray(d.messages) && d.messages.every((v) => typeof v === "string");
-}
 
 function Icon({ kind, className = "" }: { kind: string; className?: string }) {
   const paths: Record<string, ReactNode> = {
@@ -40,7 +25,8 @@ function Icon({ kind, className = "" }: { kind: string; className?: string }) {
 }
 
 export function Welcome() {
-  const [draft, setDraft] = useState<Draft>(empty);
+  const onboarding = useOnboarding();
+  const [draft, setDraft] = useState<EntryDraft>(createEntryDraft);
   const [ready, setReady] = useState(false);
   const [path, setPath] = useState<Path | null>(null);
   const [section, setSection] = useState<Section>("Overview");
@@ -48,6 +34,7 @@ export function Welcome() {
   const [storageBlocked, setStorageBlocked] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const panel = useRef<HTMLHeadingElement>(null);
+  const started = draft.started || (onboarding.state?.revision ?? 0) > 0;
 
   // Browser-only storage is restored after hydration; this effect intentionally
   // synchronizes React state with an external system, not derived props.
@@ -57,7 +44,7 @@ export function Welcome() {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed: unknown = JSON.parse(saved);
-        if (!isDraft(parsed)) throw new Error("Invalid saved draft");
+        if (!isEntryDraft(parsed)) throw new Error("Invalid saved draft");
         setDraft(parsed);
         if (parsed.started) setPath("manual");
       }
@@ -95,22 +82,24 @@ export function Welcome() {
     setPath(next === "Conversation" ? "chat" : next === "Menu" ? "upload" : next === "Overview" ? "manual" : null);
     requestAnimationFrame(() => panel.current?.focus());
   }
-  function saveBasics(event: FormEvent<HTMLFormElement>) {
+  async function saveBasics(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!draft.name.trim() && !draft.cuisine.trim()) return;
+    if ((!draft.name.trim() && !draft.cuisine.trim()) || !onboarding.state || onboarding.busy) return;
+    const restaurant = onboarding.state.profile.restaurant;
+    if (draft.name.trim() && draft.name.trim() !== restaurant.name.value) {
+      if (!await onboarding.send({ type: "edit_fact", factId: restaurant.name.id, value: draft.name.trim() })) return;
+    }
+    if (draft.cuisine.trim() && draft.cuisine.trim() !== restaurant.cuisine.value) {
+      if (!await onboarding.send({ type: "edit_fact", factId: restaurant.cuisine.id, value: draft.cuisine.trim() })) return;
+    }
     setDraft({ ...draft, name: draft.name.trim(), cuisine: draft.cuisine.trim(), started: true });
-    setNotice("Restaurant details saved on this browser.");
-  }
-  function saveMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!draft.introduction.trim()) return;
-    setDraft({ ...draft, messages: [...draft.messages, draft.introduction.trim()], introduction: "", started: true });
-    setNotice("Your introduction is saved. AI replies will be available when conversation setup is connected.");
+    setNotice("Details saved.");
   }
   function reset() {
     if (!window.confirm("Start over? This clears the restaurant details and notes saved in this browser.")) return;
     try { localStorage.removeItem(storageKey); } catch { /* Keep the in-memory reset available. */ }
-    setStorageBlocked(false); setDraft({ ...empty }); setPath(null); setSection("Overview"); setFile(null); setNotice("");
+    onboarding.reset();
+    setStorageBlocked(false); setDraft(createEntryDraft()); setPath(null); setSection("Overview"); setFile(null); setNotice("");
   }
 
   const options: { id: Path; title: string; detail: string; link: string }[] = [
@@ -119,25 +108,29 @@ export function Welcome() {
     { id: "manual", title: "Make it your own", detail: "Prefer to fill things in yourself? Start with the details you know.", link: "Enter details manually" },
   ];
 
-  return <div className={`site ${draft.started ? "has-workspace" : ""}`}>
+  return <div className={`site ${started ? "has-workspace" : ""}`}>
     <a className="skip-link" href="#main">Skip to content</a>
     <header className="site-header">
       <div className="brand"><span className="brand-mark"><Icon kind="mark" /></span><span>ShiftChef<span className="brand-ai"> AI</span></span></div>
-      {(draft.started || storageBlocked) && <button className="text-button" onClick={reset}>Start over</button>}
+      {(started || storageBlocked) && <button className="text-button" onClick={reset}>Start over</button>}
     </header>
     <div className="app-body">
-      {draft.started && <aside className="sidebar"><p className="eyebrow">YOUR RESTAURANT</p><p className="sidebar-name">{draft.name || "Your workspace"}</p><nav aria-label="Restaurant sections">{sections.map((item) => <button key={item} aria-current={section === item ? "page" : undefined} onClick={() => navigate(item)}><Icon kind={item === "Conversation" ? "chat" : "grid"} /><span>{item}</span></button>)}</nav><p className="sidebar-footer">A profile that grows<br />with your restaurant.</p></aside>}
-      <main id="main" className={draft.started ? "workspace-main" : "welcome-main"}>
-        {!draft.started && <section className="welcome-heading"><h1>How would you like to start?</h1></section>}
-        {!draft.started && <div className="entry-options">{options.map((option) => <button className={`entry-card ${path === option.id ? "selected" : ""}`} key={option.id} onClick={() => open(option.id)} aria-pressed={path === option.id}><span className={`option-icon ${option.id}`}><Icon kind={option.id} /></span><h2>{option.title}</h2><p>{option.detail}</p><span className="card-link">{option.link}<Icon kind="arrow" /></span></button>)}</div>}
-        {ready && (path || draft.started) && <section className="entry-panel" aria-labelledby="panel-heading">
-          <div className="panel-top"><span className="eyebrow">{draft.started ? "YOUR WORKSPACE" : "START ANYWHERE"}</span>{!draft.started && <button className="text-button" onClick={() => setPath(null)}>Close</button>}</div>
+      {started && <aside className="sidebar"><p className="eyebrow">YOUR RESTAURANT</p><p className="sidebar-name">{onboarding.state?.profile.restaurant.name.value || draft.name || "Your workspace"}</p><nav aria-label="Restaurant sections">{sections.map((item) => <button key={item} aria-current={section === item ? "page" : undefined} onClick={() => navigate(item)}><Icon kind={item === "Conversation" ? "chat" : "grid"} /><span>{item}</span></button>)}</nav><p className="sidebar-footer">A profile that grows<br />with your restaurant.</p></aside>}
+      <main id="main" className={started ? "workspace-main" : "welcome-main"}>
+        {!started && <section className="welcome-heading"><h1>How would you like to start?</h1></section>}
+        {!started && <div className="entry-options">{options.map((option) => <button className={`entry-card ${path === option.id ? "selected" : ""}`} key={option.id} onClick={() => open(option.id)} aria-pressed={path === option.id}><span className={`option-icon ${option.id}`}><Icon kind={option.id} /></span><h2>{option.title}</h2><p>{option.detail}</p><span className="card-link">{option.link}<Icon kind="arrow" /></span></button>)}</div>}
+        {ready && (path || started) && <section className="entry-panel" aria-labelledby="panel-heading">
+          <div className="panel-top"><span className="eyebrow">{started ? "YOUR WORKSPACE" : "START ANYWHERE"}</span>{!started && <button className="text-button" onClick={() => setPath(null)}>Close</button>}</div>
           <h2 id="panel-heading" ref={panel} tabIndex={-1}>{path === "chat" ? "Tell us about your restaurant." : path === "upload" ? "Your menu is a great start." : section === "Overview" ? "The basics. At your pace." : section}</h2>
-          {path === "chat" && <><p className="panel-description">Tell me a little about your restaurant. You can start with anything — your employees, menu, kitchen equipment, or the challenges you&apos;re facing.</p>{draft.messages.length > 0 && <div className="saved-messages">{draft.messages.map((message, index) => <div className="saved-message" key={index}><span className="eyebrow">YOUR NOTE</span><p>{message}</p></div>)}</div>}<form onSubmit={saveMessage}><label htmlFor="introduction">What would you like us to know?</label><textarea autoFocus={false} id="introduction" rows={4} maxLength={5000} value={draft.introduction} onChange={(e) => setDraft({ ...draft, introduction: e.target.value })} placeholder="I run a small restaurant with four cooks…" /><div className="form-bottom"><p>AI conversation isn&apos;t connected yet. Your notes stay saved here.</p><button className="primary-button" disabled={!draft.introduction.trim()}>Save introduction<Icon kind="arrow" /></button></div></form></>}
-          {path === "manual" && <><p className="panel-description">Start with either detail. You can add more whenever you&apos;re ready.</p><form onSubmit={saveBasics}><div className="field-grid"><div><label htmlFor="restaurant-name">Restaurant name <span>(optional)</span></label><input id="restaurant-name" maxLength={150} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="What do you call your place?" /></div><div><label htmlFor="cuisine">Cuisine <span>(optional)</span></label><input id="cuisine" maxLength={150} value={draft.cuisine} onChange={(e) => setDraft({ ...draft, cuisine: e.target.value })} placeholder="For example, Chinese or Italian" /></div></div><div className="form-bottom"><p>Only the details you enter are saved.</p><button className="primary-button" disabled={!draft.name.trim() && !draft.cuisine.trim()}>Save details<Icon kind="arrow" /></button></div></form></>}
+          {path === "chat" && <Conversation state={onboarding.state} busy={onboarding.busy} input={draft.introduction} onInput={(introduction) => setDraft((current) => ({ ...current, introduction }))} send={onboarding.send} previousNotes={draft.messages} onStarted={() => setDraft((current) => ({ ...current, started: true }))} />}
+          {path === "manual" && !started && <><p className="panel-description">Start with either detail. You can add more whenever you&apos;re ready.</p><form onSubmit={saveBasics}><div className="field-grid"><div><label htmlFor="restaurant-name">Restaurant name <span>(optional)</span></label><input id="restaurant-name" maxLength={150} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="What do you call your place?" /></div><div><label htmlFor="cuisine">Cuisine <span>(optional)</span></label><input id="cuisine" maxLength={150} value={draft.cuisine} onChange={(e) => setDraft({ ...draft, cuisine: e.target.value })} placeholder="For example, Chinese or Italian" /></div></div><div className="form-bottom"><p>Only the details you enter are saved.</p><button className="primary-button" disabled={onboarding.busy || !onboarding.state || (!draft.name.trim() && !draft.cuisine.trim())}>Save details<Icon kind="arrow" /></button></div></form></>}
           {path === "upload" && <><p className="panel-description">Choose a menu to begin. Automatic dish extraction isn&apos;t connected yet; no file will be sent or analyzed.</p><div className="upload-box"><Icon kind="upload" /><label htmlFor="menu-file">Choose a menu file</label><input id="menu-file" type="file" onChange={(e) => { const chosen = e.target.files?.[0] || null; setFile(chosen); }} /><p>Your file stays on this device.</p></div>{file && <div className="form-bottom"><p>{file.name}</p><button className="primary-button" onClick={() => { setDraft({ ...draft, menuFileName: file.name, started: true }); setNotice("Menu filename saved. Dish extraction is not available yet."); }}>Save menu reference<Icon kind="arrow" /></button></div>}{draft.menuFileName && <p className="file-note">Menu reference: <strong>{draft.menuFileName}</strong>. The original file is not saved across refreshes. Select it again when extraction becomes available.</p>}</>}
-          {!path && draft.started && <><p className="panel-description">No {section.toLowerCase()} have been added yet. This section will grow with your restaurant profile.</p><p className="coming-note">Detailed {section.toLowerCase()} editing is coming next. You can keep notes in the meantime.</p><button className="primary-button" onClick={() => open("chat")}>Add a note<Icon kind="arrow" /></button></>}
+          {onboarding.state && started && section === "Overview" && <RestaurantEditor state={onboarding.state} busy={onboarding.busy} send={onboarding.send} />}
+          {onboarding.state && started && (section === "Staff" || section === "Skills" || section === "Equipment" || section === "Menu") && <ProfileEditor state={onboarding.state} collection={section.toLowerCase() as "staff" | "skills" | "equipment" | "menu"} busy={onboarding.busy} send={onboarding.send} />}
+          {section === "Overview" && started && onboarding.state && <div className="profile-review"><h3>Profile review</h3><button className="secondary-button" disabled={onboarding.busy} onClick={() => void onboarding.send({ type: "request_review" })}>{onboarding.busy ? "Updating…" : "Review profile"}</button>{onboarding.state.review && <><p className="review-summary">{onboarding.state.review.summary}</p>{onboarding.state.review.unknowns.length > 0 && <details><summary>Still unknown</summary><ul>{onboarding.state.review.unknowns.map((item, index) => <li key={index}>{item}</li>)}</ul></details>}<button className="primary-button" disabled={onboarding.busy || onboarding.state.conflicts.length > 0 || onboarding.state.confirmation?.profileRevision === onboarding.state.profileRevision} onClick={() => void onboarding.send({ type: "confirm_profile", profileRevision: onboarding.state!.profileRevision })}>{onboarding.state.confirmation?.profileRevision === onboarding.state.profileRevision ? "Profile confirmed" : "Confirm profile"}</button></>}<p className="muted-copy">{onboarding.state.readiness.status === "task_unspecified" ? "Your goal is not set yet." : "Operational analysis isn't available yet."}</p></div>}
         </section>}
+        {onboarding.error && <div className="status-note" role="alert">{onboarding.error}{onboarding.retryable && <button className="text-button" disabled={onboarding.busy} onClick={() => void onboarding.retry()}>Retry</button>}</div>}
+        {onboarding.storageIssue && <div className="status-note" role="status">{onboarding.storageIssue}</div>}
         {notice && <div className="status-note" role="status">{notice}</div>}
       </main>
     </div>
