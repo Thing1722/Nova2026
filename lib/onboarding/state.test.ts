@@ -85,7 +85,7 @@ test("missing employee skills produce exactly one adaptive question", async () =
   }));
 
   assert.equal(response.profile.staff[0].skillIds.status, "unknown");
-  assert.equal(response.question?.topicId, "staff-skills");
+  assert.equal(response.question?.topicId, `staff-skills:${response.profile.staff[0].id}`);
   assert.equal(Array.isArray(response.question?.quickReplies), true);
 });
 

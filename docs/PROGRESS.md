@@ -14,7 +14,7 @@ Statuses: **Not Started / In Progress / Completed / Blocked**. Coordinate shared
 | Developer 1 | Editable profile, evidence labels, summary and confirmation | Not Started |
 | Developer 2 | Partial-profile models and incremental extraction/merge validation | Completed |
 | Developer 2 | `POST /api/onboard`, OpenRouter boundary, and offline fallback | Completed |
-| Developer 2 | Adaptive questions and conservative Phase 1 readiness | Completed |
+| Developer 2 | Goal-prioritized, entity-scoped adaptive questions and conservative Phase 1 readiness | Completed |
 | Developer 2 | Deterministic staffing-emergency engine and reusable resource checks | Completed |
 | Shared | Integrate and verify onboarding and corrections | Not Started |
 
@@ -24,6 +24,7 @@ Statuses: **Not Started / In Progress / Completed / Blocked**. Coordinate shared
 - The canonical onboarding route is `POST /api/onboard` with the full stateless state/action envelope in `types/api.ts`.
 - Existing analysis models require complete values and must not serve as partial onboarding state. Sample data is a fixture, not owner-confirmed data.
 - Phase 1 readiness intentionally returns only `task_unspecified` or `rules_pending`; it never reports `ready` before task-specific rules are agreed.
+- Dynamic staff, station-capacity, and menu-requirement questions use entity-scoped topic IDs. Adding a new entity no longer inherits an older entity's answered/skipped status, and confirmed goals prioritize the most relevant question area.
 - The staffing-emergency engine is an internal deterministic library over confirmed onboarding facts. It does not revise `/api/analyze`, estimate demand, or add AI explanations.
 - Blank OpenRouter environment templates are prepared; model choice is pending. Later timing evidence, three baseline comparison interfaces, and new-dish requirements are preserved in PROJECT.md and need future contract clarification.
 - OpenRouter credentials are application-only. Never request or expose the key or run live OpenRouter calls from Codex.

@@ -10,7 +10,7 @@ import type {
 } from "../../types/api";
 import { createUnknownFact, mergeRestaurantProfile, validateRestaurantProfile } from "../restaurant-profile";
 import { applyExtraction, type MessageExtractor } from "./extraction";
-import { buildReview, calculateReadiness, selectNextQuestion, upsertTopic } from "./questions";
+import { buildReview, calculateReadiness, isQuestionTopicSatisfied, selectNextQuestion, upsertTopic } from "./questions";
 import { validateOnboardingStateShape } from "./validation";
 
 export class OnboardingError extends Error {
@@ -188,7 +188,7 @@ async function processMessage(
   );
   state.profile = merged.profile;
   state.conflicts = merged.conflicts;
-  if (priorQuestion && action.questionId === priorQuestion.id && topicSatisfied(state.profile, priorQuestion.topicId)) {
+  if (priorQuestion && action.questionId === priorQuestion.id && isQuestionTopicSatisfied(state.profile, priorQuestion.topicId)) {
     state.topics = upsertTopic(state.topics, priorQuestion.topicId, "answered", ownerSource.id);
   }
   const changed = merged.changedFactIds.length;
@@ -392,19 +392,6 @@ function extractionFailureMessage(
 function appendAssistant(state: OnboardingState, requestId: string, text: string): void {
   const id = `assistant:${requestId}`;
   if (!state.messages.some((message) => message.id === id)) state.messages.push({ id, role: "assistant", text });
-}
-
-function topicSatisfied(profile: Profile, topicId: string): boolean {
-  if (topicId === "restaurant-goal") return profile.restaurant.immediateGoal.status === "confirmed";
-  if (topicId === "staff-identities") return profile.restaurant.reportedStaffCount.value !== null && profile.staff.length >= profile.restaurant.reportedStaffCount.value;
-  if (topicId === "staff-skills") return profile.staff.length > 0 && profile.staff.every((member) => member.skillIds.status === "confirmed");
-  if (topicId === "staff-availability") return profile.staff.length > 0 && profile.staff.every((member) => member.available.status === "confirmed");
-  if (topicId === "equipment") return profile.equipment.length > 0;
-  if (topicId === "equipment-capacity") return profile.equipment.length > 0 && profile.equipment.every((item) => item.capacity.status === "confirmed");
-  if (topicId === "menu-items") return profile.menu.length > 0;
-  if (topicId === "menu-requirements") return profile.menu.length > 0 && profile.menu.every((dish) => dish.requiredSkillIds.status === "confirmed" && dish.requiredEquipmentIds.status === "confirmed");
-  if (topicId === "restaurant-cuisine") return profile.restaurant.cuisine.status === "confirmed";
-  return false;
 }
 
 function findFact(profile: Profile, factId: string): Fact<unknown> | null {
