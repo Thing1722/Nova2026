@@ -166,10 +166,23 @@ async function processMessage(
 
   const result = await extractor.extract(state, action.text.trim());
   if (!result.ok) {
+    // Bounded categories only: never log owner content, credentials, or provider bodies.
+    console.warn("[onboarding] extraction failed:", result.reason);
+    const reasons: Record<typeof result.reason, string> = {
+      unconfigured: "AI key or model is missing from the server configuration.",
+      authentication: "OpenRouter rejected access. Check the key and account permissions.",
+      credits: "OpenRouter reports insufficient credits.",
+      routing: "OpenRouter has no matching endpoint for this model configuration.",
+      rate_limited: "OpenRouter is rate-limiting requests. Try again shortly.",
+      timeout: "The AI request timed out before completing.",
+      invalid_response: "The AI returned incomplete or invalid JSON.",
+      invalid_extraction: "The AI response failed the restaurant fact checks.",
+      unavailable: "AI extraction is temporarily unavailable because the provider request failed.",
+    };
     appendAssistant(
       state,
       requestId,
-      "I saved your message, but AI extraction is temporarily unavailable, so I did not change your restaurant profile. You can retry or edit the profile directly.",
+      `${reasons[result.reason]} Your message is saved; the profile wasn't changed. [${result.reason}]`,
     );
     return priorQuestion !== null;
   }
