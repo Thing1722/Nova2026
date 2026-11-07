@@ -370,14 +370,22 @@ function detectAnswerStatus(text: string): "unknown" | "skipped" | null {
   return null;
 }
 
-function extractionFailureMessage(reason: "unconfigured" | "rate_limited" | "unavailable" | "invalid_response" | "invalid_extraction"): string {
-  const category = reason === "unconfigured"
-    ? "AI extraction is not configured on the server"
-    : reason === "rate_limited"
-      ? "AI extraction is temporarily rate limited"
-      : reason === "unavailable"
-        ? "The AI provider is temporarily unavailable"
-        : "The AI response could not be safely validated";
+function extractionFailureMessage(
+  reason: "unconfigured" | "authentication" | "credits" | "routing" | "rate_limited" |
+    "timeout" | "unavailable" | "invalid_response" | "invalid_extraction",
+): string {
+  const categories: Record<typeof reason, string> = {
+    unconfigured: "AI extraction is not configured on the server",
+    authentication: "the AI provider rejected the server configuration",
+    credits: "the AI provider account cannot currently process requests",
+    routing: "the configured AI model is temporarily unavailable",
+    rate_limited: "AI extraction is temporarily rate limited",
+    timeout: "the AI request timed out",
+    unavailable: "the AI provider is temporarily unavailable",
+    invalid_response: "the AI response could not be safely validated",
+    invalid_extraction: "the extracted facts could not be safely validated",
+  };
+  const category = categories[reason];
   return `I saved your message, but ${category}, so I did not change your restaurant profile. You can retry or edit the profile directly.`;
 }
 
