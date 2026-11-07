@@ -166,11 +166,7 @@ async function processMessage(
 
   const result = await extractor.extract(state, action.text.trim());
   if (!result.ok) {
-    appendAssistant(
-      state,
-      requestId,
-      "I saved your message, but AI extraction is temporarily unavailable, so I did not change your restaurant profile. You can retry or edit the profile directly.",
-    );
+    appendAssistant(state, requestId, extractionFailureMessage(result.reason));
     return priorQuestion !== null;
   }
 
@@ -372,6 +368,17 @@ function detectAnswerStatus(text: string): "unknown" | "skipped" | null {
   if (["i dont know", "not sure", "im not sure", "unknown"].includes(normalized)) return "unknown";
   if (["skip", "skip this", "pass"].includes(normalized)) return "skipped";
   return null;
+}
+
+function extractionFailureMessage(reason: "unconfigured" | "rate_limited" | "unavailable" | "invalid_response" | "invalid_extraction"): string {
+  const category = reason === "unconfigured"
+    ? "AI extraction is not configured on the server"
+    : reason === "rate_limited"
+      ? "AI extraction is temporarily rate limited"
+      : reason === "unavailable"
+        ? "The AI provider is temporarily unavailable"
+        : "The AI response could not be safely validated";
+  return `I saved your message, but ${category}, so I did not change your restaurant profile. You can retry or edit the profile directly.`;
 }
 
 function appendAssistant(state: OnboardingState, requestId: string, text: string): void {
