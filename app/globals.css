@@ -123,3 +123,33 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
   .desktop-break { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+
+.assistant-message { background: var(--surface); border: 1px solid var(--border); }
+.quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 24px; }
+.secondary-button { min-height: 44px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+.secondary-button:hover:not(:disabled) { background: var(--neutral-100); }
+.question-block > p { font-weight: 550; }
+.muted-copy { color: var(--muted); font-size: 13px; }
+.legacy-notes { margin-bottom: 24px; }
+.legacy-notes summary { cursor: pointer; min-height: 44px; }
+.legacy-notes p { margin-bottom: 12px; white-space: pre-wrap; }
+.profile-editor { margin-top: 28px; }
+.add-entity { padding-bottom: 24px; }
+.fact-input-row { display: flex; align-items: start; gap: 10px; }
+.fact-input-row input, .fact-input-row select { flex: 1; min-width: 0; }
+.fact-input-row select { background: var(--surface); border: 1px solid #93938e; border-radius: 11px; padding: 12px; font: inherit; color: var(--foreground); min-height: 48px; }
+.field-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.fact-status { color: var(--muted); font-size: 12px; font-weight: 400; }
+.entity-editor { border-top: 1px solid var(--border); padding: 8px 0; }
+.entity-editor > summary { cursor: pointer; padding: 12px 0; min-height: 48px; font-weight: 550; }
+.entity-editor > summary .fact-status { margin-left: 16px; }
+.entity-editor > div { padding: 8px 0 20px; }
+.profile-field { margin: 12px 0 24px; }
+.evidence { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.evidence summary { min-height: 32px; cursor: pointer; }
+.evidence p { white-space: pre-wrap; }
+.profile-review { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
+.profile-review h3 { margin: 0 0 16px; font-size: 18px; }
+.profile-review > * { margin-bottom: 16px; }
+.profile-review summary { cursor: pointer; min-height: 44px; }
+.review-summary { white-space: pre-wrap; }

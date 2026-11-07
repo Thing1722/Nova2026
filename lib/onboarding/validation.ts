@@ -2,9 +2,11 @@ import type {
   Conflict,
   Fact,
   OnboardingAction,
+  OnboardingMessage,
   OnboardingQuestion,
   OnboardingRequest,
   OnboardingState,
+  OnboardingTopic,
   Profile,
   Source,
 } from "../../types/api";
@@ -124,7 +126,7 @@ function isSources(value: unknown): value is Source[] {
     isBoundedString(source.text, 1, MAX_TEXT_CHARS) && nullableString(source.fileName, 300) && nullableString(source.location, 300));
 }
 
-function isMessages(value: unknown): boolean {
+function isMessages(value: unknown): value is OnboardingMessage[] {
   return Array.isArray(value) && value.length <= MAX_MESSAGES && value.every((message) => isRecord(message) &&
     hasKeys(message, ["id", "role", "text"]) && isEntityId(message.id) &&
     ["user", "assistant"].includes(String(message.role)) && isBoundedString(message.text, 1, MAX_TEXT_CHARS));
@@ -137,7 +139,7 @@ function isConflicts(value: unknown): value is Conflict[] {
     isStringArray(conflict.sourceIds, 100) && isBoundedString(conflict.explanation, 1, 1_000));
 }
 
-function isTopics(value: unknown): boolean {
+function isTopics(value: unknown): value is OnboardingTopic[] {
   return isBoundedArray(value) && value.every((topic) => isRecord(topic) && hasKeys(topic, ["id", "status", "sourceIds"]) &&
     isEntityId(topic.id) && ["answered", "unknown", "skipped"].includes(String(topic.status)) && isStringArray(topic.sourceIds, 100));
 }
