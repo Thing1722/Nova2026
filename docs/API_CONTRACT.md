@@ -1,5 +1,21 @@
 # Shared API Contract — v1
 
+## Scope after the Phase 1 workflow revision
+
+Phase 1 is now adaptive restaurant onboarding; see `PROJECT.md`. The `/api/analyze` contract below is preserved unchanged for future analysis compatibility. It is not an onboarding endpoint. Later workflow phases will be clarified before implementation.
+
+Onboarding requires partial profiles, unknown values, field-level evidence, contradictions, owner edits, adaptive questions, and explicit confirmation. Those concepts are not represented by this analysis request. Do not submit incomplete profiles here, add extra properties, fabricate required values, or treat unverified inferences as operational facts.
+
+Agree on a separate onboarding contract through GitHub before endpoint implementation. Its route and wire format are pending. It must cover:
+
+- Incremental messages and profile edits, preserving facts and stable entity IDs.
+- Confirmed facts, missing/ambiguous details, unverified inferences, evidence, and unresolved conflicts.
+- One primary follow-up question, optional quick replies, and unknown/skipped answers.
+- Updated editable profile, task-specific readiness, summary, and owner confirmation as separate states.
+- Conversation state ownership and safe error/retry behavior without losing collected information.
+
+Existing analysis models and fixtures remain compatible with v1. A future handoff must explicitly map sufficiently confirmed onboarding facts to this request; conversion and task readiness rules remain deferred. No onboarding wire schema is finalized in this revision.
+
 ## Transport and rules
 
 `POST /api/analyze` with `Content-Type: application/json`. Successful responses use HTTP 200 and exactly the success structure below. All fields shown are required; no `undefined`, optional fields, or extra properties. Lists may be empty. Property names use camelCase. IDs are unique within each entity list; every referenced ID must exist in the request. Text fields are nonempty strings, counts are nonnegative integers, and numeric values must be finite.
