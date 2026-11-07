@@ -1,6 +1,6 @@
 # Adaptive onboarding backend implementation sketch
 
-Status: **contract confirmed; implementation in progress**. This document is the frontend integration handoff for the backend boundary.
+Status: **backend implementation complete; Node-enabled verification pending**. This document is the frontend integration handoff for the backend boundary.
 
 ## Scope
 
@@ -115,6 +115,7 @@ Operational-analysis readiness rules are deferred. Phase 1 returns `task_unspeci
 - `lib/onboarding/extraction.ts`
 - `lib/onboarding/questions.ts`
 - `lib/onboarding/state.ts`
+- `lib/onboarding/validation.ts`
 - focused tests beside the onboarding modules
 - additions to `types/api.ts` only to codify the confirmed shared onboarding request/response types
 

@@ -1,0 +1,71 @@
+{
+  "id": "rest-maple-grill",
+  "name": "Maple Street Grill",
+  "serviceMinutes": 180,
+  "expectedOrders": 75,
+  "staff": [
+    {
+      "id": "staff-maya",
+      "name": "Maya Chen",
+      "role": "Head chef",
+      "skills": ["grill", "steak"],
+      "assignedStationId": "eq-grill",
+      "baselineAvailable": true,
+      "available": true
+    },
+    {
+      "id": "staff-leo",
+      "name": "Leo Rivera",
+      "role": "Line cook",
+      "skills": ["fry", "batter", "grill"],
+      "assignedStationId": "eq-fryer",
+      "baselineAvailable": true,
+      "available": true
+    },
+    {
+      "id": "staff-nina",
+      "name": "Nina Patel",
+      "role": "Junior cook",
+      "skills": ["fry"],
+      "assignedStationId": "eq-fryer",
+      "baselineAvailable": true,
+      "available": true
+    }
+  ],
+  "equipment": [
+    { "id": "eq-grill", "name": "Grill", "available": true, "capacity": 4 },
+    { "id": "eq-fryer", "name": "Fryer", "available": true, "capacity": 2 }
+  ],
+  "menu": [
+    {
+      "id": "dish-steak",
+      "name": "Grilled Ribeye",
+      "requiredSkills": ["grill", "steak"],
+      "requiredEquipmentIds": ["eq-grill"]
+    },
+    {
+      "id": "dish-burger",
+      "name": "House Beef Burger",
+      "requiredSkills": ["grill"],
+      "requiredEquipmentIds": ["eq-grill"]
+    },
+    {
+      "id": "dish-vegetables",
+      "name": "Grilled Vegetable Plate",
+      "requiredSkills": ["grill"],
+      "requiredEquipmentIds": ["eq-grill"]
+    },
+    {
+      "id": "dish-fish-chips",
+      "name": "Beer-Battered Fish and Chips",
+      "requiredSkills": ["fry", "batter"],
+      "requiredEquipmentIds": ["eq-fryer"]
+    },
+    {
+      "id": "dish-fries",
+      "name": "Seasoned Fries",
+      "requiredSkills": ["fry"],
+      "requiredEquipmentIds": ["eq-fryer"]
+    }
+  ]
+}

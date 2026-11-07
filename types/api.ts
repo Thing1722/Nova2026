@@ -273,6 +273,9 @@ export interface OnboardingResponse {
 export type OnboardingErrorCode =
   | "INVALID_REQUEST"
   | "STALE_CONFIRMATION"
+  | "FILE_TOO_LARGE"
+  | "UNSUPPORTED_FILE"
+  | "UNREADABLE_MENU"
   | "RATE_LIMITED"
   | "EXTRACTION_FAILED"
   | "SERVICE_UNAVAILABLE"
